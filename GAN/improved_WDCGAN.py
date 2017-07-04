@@ -10,6 +10,7 @@ mb_size = 32
 X_dim = 784
 z_dim = 10
 h_dim = 128
+fc_dim = 1024
 lam = 10
 n_disc = 5
 lr = 1e-4
@@ -41,13 +42,11 @@ def xavier_init(size):
 
 X = tf.placeholder(tf.float32, shape=[None, X_dim])
 
-D_W1 = tf.Variable(xavier_init([X_dim, h_dim]))
 D_b1 = tf.Variable(tf.zeros(shape=[h_dim]))
+D_b2 = tf.Variable(tf.zeros(shape=[h_dim*2]))
+D_b3 = tf.Variable(tf.zeros(shape=[h_dim*4]))
 
-D_W2 = tf.Variable(xavier_init([h_dim, 1]))
-D_b2 = tf.Variable(tf.zeros(shape=[1]))
-
-theta_D = [D_W1, D_W2, D_b1, D_b2]
+theta_D = [D_b1, D_b2, D_b3]
 
 
 z = tf.placeholder(tf.float32, shape=[None, z_dim])
@@ -71,11 +70,13 @@ def G(z):
     G_prob = tf.nn.sigmoid(G_log_prob)
     return G_prob
 
-
-def D(X):
-    D_h1 = tf.nn.relu(tf.matmul(X, D_W1) + D_b1)
-    out = tf.matmul(D_h1, D_W2) + D_b2
-    return out
+# HERE
+def D(X): 
+    D_h1 = tf.nn.lrelu(conv2d(X, h_dim) + D_b1)
+    D_h2 = tf.nn.lrelu(conv2d(D_h1, h_dim*2) + D_b2)
+    D_h3 = tf.nn.lrelu(conv2d(D_h2, h_dim*4) + D_b3)
+    out = linear(D_h3, 1)
+    return tf.nn.sigmoid(out)
 
 
 G_sample = G(z)
