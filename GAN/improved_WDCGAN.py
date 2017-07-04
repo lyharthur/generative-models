@@ -39,6 +39,7 @@ def lrelu(x, leak=0.3, name="lrelu"):
         f1 = 0.5 * (1 + leak)
         f2 = 0.5 * (1 - leak)
         return f1 * x + f2 * abs(x)
+    
 def xavier_init(size):
     in_dim = size[0]
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
@@ -48,13 +49,11 @@ def xavier_init(size):
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
     return tf.Variable(initial)
- 
-#定義初始化變數 採用常數 , 皆為為0.1
+
 def bias_variable(shape):
     initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial)
- 
-#定義conv 層 layer padding 方法採用"一樣"
+
 def conv2d(x, W):
     # stride [1, x_movement, y_movement, 1]
     # Must have strides[0] = strides[3] = 1
