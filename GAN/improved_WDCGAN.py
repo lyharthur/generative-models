@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow.contrib.layers as ly
 from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
 import matplotlib.pyplot as plt
@@ -33,7 +34,11 @@ def plot(samples):
 
     return fig
 
-
+def lrelu(x, leak=0.3, name="lrelu"):
+    with tf.variable_scope(name):
+        f1 = 0.5 * (1 + leak)
+        f2 = 0.5 * (1 - leak)
+        return f1 * x + f2 * abs(x)
 def xavier_init(size):
     in_dim = size[0]
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
@@ -93,9 +98,9 @@ def G(z):
 # HERE
 def D(X): 
     #h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
-    D_h1 = tf.nn.lrelu(tf.contrib.layers.batch_norm(conv2d(X, D_w1)) + D_b1)
-    D_h2 = tf.nn.lrelu(tf.contrib.layers.batch_norm(conv2d(D_h1, D_w2)) + D_b2)
-    D_h3 = tf.nn.lrelu(tf.contrib.layers.batch_norm(conv2d(D_h2, D_w3)) + D_b3)
+    D_h1 = lrelu(ly.batch_norm(conv2d(X, D_w1)) + D_b1)
+    D_h2 = lrelu(ly.batch_norm(conv2d(D_h1, D_w2)) + D_b2)
+    D_h3 = lrelu(ly.batch_norm(conv2d(D_h2, D_w3)) + D_b3)
     out = linear(D_h3, 1)
     return tf.nn.sigmoid(out)
 
