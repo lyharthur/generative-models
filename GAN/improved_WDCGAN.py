@@ -39,14 +39,34 @@ def xavier_init(size):
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
     return tf.random_normal(shape=size, stddev=xavier_stddev)
 
+####
+def weight_variable(shape):
+    initial = tf.truncated_normal(shape, stddev=0.1)
+    return tf.Variable(initial)
+ 
+#定義初始化變數 採用常數 , 皆為為0.1
+def bias_variable(shape):
+    initial = tf.constant(0.1, shape=shape)
+    return tf.Variable(initial)
+ 
+#定義conv 層 layer padding 方法採用"一樣"
+def conv2d(x, W):
+    # stride [1, x_movement, y_movement, 1]
+    # Must have strides[0] = strides[3] = 1
+    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+####
 
 X = tf.placeholder(tf.float32, shape=[None, X_dim])
 
-D_b1 = tf.Variable(tf.zeros(shape=[h_dim]))
-D_b2 = tf.Variable(tf.zeros(shape=[h_dim*2]))
-D_b3 = tf.Variable(tf.zeros(shape=[h_dim*4]))
+D_b1 = bias_variable(h_dim)
+D_b2 = bias_variable(h_dim*2)
+D_b3 = bias_variable(h_dim*4)
 
-theta_D = [D_b1, D_b2, D_b3]
+D_w1 = tf.Variable(xavier_init([X_dim, h_dim]))
+D_w2 = tf.Variable(xavier_init([h_dim, h_dim*2]))
+D_w2 = tf.Variable(xavier_init([h_dim*2, h_dim*4]))
+
+theta_D = [D_b1, D_b2, D_b3, D_w1, D_w2, D_w3]
 
 
 z = tf.placeholder(tf.float32, shape=[None, z_dim])
@@ -72,9 +92,10 @@ def G(z):
 
 # HERE
 def D(X): 
-    D_h1 = tf.nn.lrelu(conv2d(X, h_dim) + D_b1)
-    D_h2 = tf.nn.lrelu(conv2d(D_h1, h_dim*2) + D_b2)
-    D_h3 = tf.nn.lrelu(conv2d(D_h2, h_dim*4) + D_b3)
+    #h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+    D_h1 = tf.nn.lrelu(tf.contrib.layers.batch_norm(conv2d(X, D_w1)) + D_b1)
+    D_h2 = tf.nn.lrelu(tf.contrib.layers.batch_norm(conv2d(D_h1, D_w2)) + D_b2)
+    D_h3 = tf.nn.lrelu(tf.contrib.layers.batch_norm(conv2d(D_h2, D_w3)) + D_b3)
     out = linear(D_h3, 1)
     return tf.nn.sigmoid(out)
 
