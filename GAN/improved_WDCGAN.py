@@ -61,19 +61,19 @@ def conv2d(x, W):
 ####
 
 X = tf.placeholder(tf.float32, shape=[None, X_dim])
+z = tf.placeholder(tf.float32, shape=[None, z_dim])
 
-D_b1 = bias_variable(h_dim)
-D_b2 = bias_variable(h_dim*2)
-D_b3 = bias_variable(h_dim*4)
+x_image = tf.reshape(X, [-1, 28, 28, 1])
 
-D_w1 = tf.Variable(xavier_init([X_dim, h_dim]))
-D_w2 = tf.Variable(xavier_init([h_dim, h_dim*2]))
-D_w2 = tf.Variable(xavier_init([h_dim*2, h_dim*4]))
+D_b1 = bias_variable(32)
+D_b2 = bias_variable(64)
+D_b3 = bias_variable(128)
+
+D_w1 = tf.Variable(weight_variable([5, 5, 1, 32]))
+D_w2 = tf.Variable(weight_variable([5, 5, 32, 64]))
+D_w2 = tf.Variable(weight_variable([5, 5, 64, 128]))
 
 theta_D = [D_b1, D_b2, D_b3, D_w1, D_w2, D_w3]
-
-
-z = tf.placeholder(tf.float32, shape=[None, z_dim])
 
 G_W1 = tf.Variable(xavier_init([z_dim, h_dim]))
 G_b1 = tf.Variable(tf.zeros(shape=[h_dim]))
@@ -97,7 +97,7 @@ def G(z):
 # HERE
 def D(X): 
     #h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
-    D_h1 = lrelu(ly.batch_norm(conv2d(X, D_w1)) + D_b1)
+    D_h1 = lrelu(ly.batch_norm(conv2d(x_image, D_w1)) + D_b1)
     D_h2 = lrelu(ly.batch_norm(conv2d(D_h1, D_w2)) + D_b2)
     D_h3 = lrelu(ly.batch_norm(conv2d(D_h2, D_w3)) + D_b3)
     out = linear(D_h3, 1)
