@@ -149,7 +149,10 @@ X_inter = eps*X + (1. - eps)*G_sample
 grad = tf.gradients(D(X_inter), [X_inter])[0]
 grad_norm = tf.sqrt(tf.reduce_sum((grad)**2, axis=1))
 grad_pen = lam * tf.reduce_mean(grad_norm - 1.)**2
-
+'''LSGAN
+D_loss = 0.5 * (tf.reduce_mean((D_real - 1)**2) + tf.reduce_mean(D_fake**2))
+G_loss = 0.5 * tf.reduce_mean((D_fake - 1)**2)
+'''
 D_loss = tf.reduce_mean(D_fake) - tf.reduce_mean(D_real) + grad_pen
 G_loss = -tf.reduce_mean(D_fake)
 
