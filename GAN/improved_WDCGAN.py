@@ -65,31 +65,28 @@ def deconv2d(x, W, output_shape):
 X = tf.placeholder(tf.float32, shape=[None, X_dim])
 z = tf.placeholder(tf.float32, shape=[None, z_dim])
 
-x_image = tf.reshape(X, [-1, 28, 28, 1])
-
+D_w1 = weight_variable([5, 5, 1, 32])
 D_b1 = bias_variable(32)
+
+D_w2 = weight_variable([5, 5, 32, 64])
 D_b2 = bias_variable(64)
+
+D_w2 = weight_variable([5, 5, 64, 128])
 D_b3 = bias_variable(128)
 
-D_w1 = tf.Variable(weight_variable([5, 5, 1, 32]))
-D_w2 = tf.Variable(weight_variable([5, 5, 32, 64]))
-D_w2 = tf.Variable(weight_variable([5, 5, 64, 128]))
+G_w1 = weight_variable([z_dim, 4 * 4 * 64])
+G_b1 = bias_variable(4 * 4 * 64)
 
-theta_D = [D_b1, D_b2, D_b3, D_w1, D_w2, D_w3]
+G_w2 = weight_variable([5, 5, 32, 64])
+G_b2 = bias_variable(32)
 
-G_w1 = tf.Variable(weight_variable([z_dim, 4 * 4 * 64]))
-G_b1 = tf.Variable(tf.zeros(shape=[4 * 4 * 64]))
+G_w3 = weight_variable([5, 5, 16, 32])
+G_b3 = bias_variable(16)
 
-G_w2 = tf.Variable(weight_variable([5, 5, 32, 64]))
-G_b2 = tf.Variable(tf.zeros(shape=[32]))
-
-G_w3 = tf.Variable(weight_variable([5, 5, 16, 32]))
-G_b3 = tf.Variable(tf.zeros(shape=[16]))
-
-G_w4 = tf.Variable(weight_variable([5, 5, 1, 16]))
-G_b4 = tf.Variable(tf.zeros(shape=[1]))
+G_w4 = weight_variable([5, 5, 1, 16])
+G_b4 = bias_variable(1)
         
-                            
+theta_D = [D_b1, D_b2, D_b3, D_w1, D_w2, D_w3]                    
 theta_G = [G_w1, G_b1, G_w2, G_b2, G_w3, G_b3, G_w4, G_b4 ]
 
 
