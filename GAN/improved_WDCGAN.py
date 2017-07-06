@@ -58,6 +58,8 @@ def conv2d(x, W):
     # stride [1, x_movement, y_movement, 1]
     # Must have strides[0] = strides[3] = 1
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+def deconv2d(x, W, output_shape):
+    return tf.nn.conv2d_transpose(x, W, output_shape, strides = [1, 1, 1, 1], padding = 'SAME')
 ####
 
 X = tf.placeholder(tf.float32, shape=[None, X_dim])
@@ -75,13 +77,20 @@ D_w2 = tf.Variable(weight_variable([5, 5, 64, 128]))
 
 theta_D = [D_b1, D_b2, D_b3, D_w1, D_w2, D_w3]
 
-G_W1 = tf.Variable(xavier_init([z_dim, h_dim]))
-G_b1 = tf.Variable(tf.zeros(shape=[h_dim]))
+G_w1 = tf.Variable(weight_variable([z_dim, 4 * 4 * 64]))
+G_b1 = tf.Variable(tf.zeros(shape=[4 * 4 * 64]))
 
-G_W2 = tf.Variable(xavier_init([h_dim, X_dim]))
-G_b2 = tf.Variable(tf.zeros(shape=[X_dim]))
+G_w2 = tf.Variable(weight_variable([5, 5, 32, 64]))
+G_b2 = tf.Variable(tf.zeros(shape=[32]))
 
-theta_G = [G_W1, G_W2, G_b1, G_b2]
+G_w3 = tf.Variable(weight_variable([5, 5, 16, 32]))
+G_b3 = tf.Variable(tf.zeros(shape=[16]))
+
+G_w4 = tf.Variable(weight_variable([5, 5, 1, 16]))
+G_b4 = tf.Variable(tf.zeros(shape=[1]))
+        
+                            
+theta_G = [G_w1, G_b1, G_w2, G_b2, G_w3, G_b3, G_w4, G_b4 ]
 
 
 def sample_z(m, n):
@@ -89,18 +98,45 @@ def sample_z(m, n):
 
 
 def G(z):
-    G_h1 = tf.nn.relu(tf.matmul(z, G_W1) + G_b1)
-    G_log_prob = tf.matmul(G_h1, G_W2) + G_b2
-    G_prob = tf.nn.sigmoid(G_log_prob)
-    return G_prob
+    G_h1 = tf.nn.relu(tf.matmul(z, G_w1) + G_b1)
+    G_h1_reshape = tf.reshape(G_h1, [-1, 4, 4, 64])
+    
+    G_h2_output_shape = tf.stack([tf.shape(z)[0], 7, 7, 32])
+    G_h2 = tf.nn.relu(deconv2d(G_h1_reshape, G_w2, G_h2_output_shape) + G_b2))
+    
+    G_h3_output_shape = tf.stack([tf.shape(z)[0], 14, 14, 16])
+    G_h3 = tf.nn.relu(deconv2d(G_h2_reshape, G_w3, G_h3_output_shape) + G_b3))
+    
+    G_h4_output_shape = tf.stack([tf.shape(z)[0], 28, 28, 1])
+    G_h4 = tf.nn.tanh(deconv2d(G_h3_reshape, G_w4, G_h4_output_shape) + G_b4))
+    
+    return G_h4
 
-# HERE
+'''def generator(z):
+    #100 x 1
+    h_g1 = tf.nn.relu(tf.add(tf.matmul(z, weights["w_g1"]), biases["b_g1"]))
+    #-1 x 4*4*128
+    h_g1_reshape = tf.reshape(h_g1, [-1, 4, 4, 64])
+    
+    output_shape_g2 = tf.stack([tf.shape(z)[0], 7, 7, 32])
+    h_g2 = tf.nn.relu(tf.add(deconv2d(h_g1_reshape, weights["w_g2"], output_shape_g2), biases["b_g2"]))
+    
+    output_shape_g3 = tf.stack([tf.shape(z)[0], 14, 14, 16])
+    h_g3 = tf.nn.relu(tf.add(deconv2d(h_g2, weights["w_g3"], output_shape_g3), biases["b_g3"]))
+    
+    output_shape_g4 = tf.stack([tf.shape(z)[0], 28, 28, 1])
+    h_g4 = tf.nn.tanh(tf.add(deconv2d(h_g3, weights["w_g4"], output_shape_g4), biases["b_g4"]))
+    
+    return h_g4'''
+
 def D(X): 
     #h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+    x_image = tf.reshape(X, [-1, 28, 28, 1])
     D_h1 = lrelu(ly.batch_norm(conv2d(x_image, D_w1)) + D_b1)
     D_h2 = lrelu(ly.batch_norm(conv2d(D_h1, D_w2)) + D_b2)
     D_h3 = lrelu(ly.batch_norm(conv2d(D_h2, D_w3)) + D_b3)
     out = linear(D_h3, 1)
+    
     return tf.nn.sigmoid(out)
 
 
