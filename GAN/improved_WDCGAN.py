@@ -79,19 +79,19 @@ D_b4 = bias_variable([32])
 
 theta_D = [D_b1, D_b2, D_b3, D_b4, D_w1, D_w2, D_w3, D_w4]
 
-G_w1 = weight_variable([z_dim, 7 * 7 * 64])
-G_b1 = bias_variable([7 * 7 * 64])
+G_w1 = weight_variable([z_dim, 7 * 7 * 32])
+G_b1 = bias_variable([7 * 7 * 32])
 
-G_w2 = weight_variable([4, 4, 32, 64])
+G_w2 = weight_variable([4, 4, 64, 64])
 G_b2 = bias_variable([32])
 
-G_w3 = weight_variable([4, 4, 16, 32])
-G_b3 = bias_variable([16])
+G_w3 = weight_variable([4, 4, 1, 32])
+G_b3 = bias_variable([1])
 
-G_w4 = weight_variable([4, 4, 1, 16])
-G_b4 = bias_variable([1])
+#G_w4 = weight_variable([4, 4, 1, 16])
+#G_b4 = bias_variable([1])
                     
-theta_G = [G_w1, G_b1, G_w2, G_b2, G_w3, G_b3, G_w4, G_b4 ]
+theta_G = [G_w1, G_b1, G_w2, G_b2, G_w3, G_b3]#, G_w4, G_b4 ]
 
 
 def sample_z(m, n):
@@ -99,27 +99,42 @@ def sample_z(m, n):
 
 
 def G(z):
+    k1, k2, k4 =28, 28/2, 28/4
     G_h1 = tf.nn.relu(tf.matmul(z, G_w1) + G_b1)
-    G_h1_reshape = tf.reshape(G_h1, [-1, 7, 7, 64])
+    G_h1_reshape = tf.reshape(G_h1, [-1, 7, 7, 32])
     
-    G_h2_output_shape = tf.stack([tf.shape(z)[0], 7, 7, 32])
+    G_h2_output_shape = tf.stack([tf.shape(z)[0], 14, 14, 32])
     G_h2 = tf.nn.relu(deconv2d(G_h1_reshape, G_w2, G_h2_output_shape) + G_b2)
     
-    G_h3_output_shape = tf.stack([tf.shape(z)[0], 14, 14, 16])
-    G_h3 = tf.nn.relu(deconv2d(G_h2, G_w3, G_h3_output_shape) + G_b3)
+    G_h3_output_shape = tf.stack([tf.shape(z)[0], 28, 28, 1])
+    G_h3 = tf.nn.tanh(deconv2d(G_h2, G_w3, G_h3_output_shape) + G_b3)
     
-    G_h4_output_shape = tf.stack([tf.shape(z)[0], 28, 28, 1])
-    G_h4 = tf.nn.tanh(deconv2d(G_h3, G_w4, G_h4_output_shape) + G_b4)
+    #G_h4_output_shape = tf.stack([tf.shape(z)[0], 28, 28, 1])
+    #G_h4 = tf.nn.tanh(deconv2d(G_h3, G_w4, G_h4_output_shape) + G_b4)
     
-    return G_h4
+    return G_h3
     '''
-    G_h1 = tf.nn.relu(tf.nn.fully_connected(z, G_w1)+ G_b1)
-    G_h1_reshape = tf.reshape(g, (-1, 7, 7, 64))  # 7x7
-    g = tcl.conv2d_transpose(g, 32, 4, stride=2, # 14x14x64
-									activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
-    g = tcl.conv2d_transpose(g, 1, 4, stride=2, # 28x28x1
-    activation_fn=tf.nn.sigmoid, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
-    return g'''
+        s2, s4, s8, s16 = \
+                    OUTPUT_SIZE/2, OUTPUT_SIZE/4, OUTPUT_SIZE/8, OUTPUT_SIZE/16
+    
+        h1 = tf.reshape(fully_connected(z, GF*8*s16*s16, 'g_fc1'), 
+                        [-1, s16, s16, GF*8], name = 'reshap')
+        h1 = relu(batch_norm(h1, name = 'g_bn1', is_train = is_train))
+        
+        h2 = deconv2d(h1, [BATCH_SIZE, s8, s8, GF*4], name = 'g_deconv2d1')
+        h2 = relu(batch_norm(h2, name = 'g_bn2', is_train = is_train))
+        
+        h3 = deconv2d(h2, [BATCH_SIZE, s4, s4, GF*2], name = 'g_deconv2d2')
+        h3 = relu(batch_norm(h3, name = 'g_bn3', is_train = is_train))
+        
+        h4 = deconv2d(h3, [BATCH_SIZE, s2, s2, GF*1], name = 'g_deconv2d3')
+        h4 = relu(batch_norm(h4, name = 'g_bn4', is_train = is_train))
+        
+        h5 = deconv2d(h4, [BATCH_SIZE, OUTPUT_SIZE, OUTPUT_SIZE, 3], 
+                      name = 'g_deconv2d4')    
+        
+        return tf.nn.tanh(h5)
+        '''
 
 
 def D(X): 
