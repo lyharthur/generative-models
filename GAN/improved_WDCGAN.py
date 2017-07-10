@@ -135,12 +135,12 @@ def D(X):
     D_h3 = lrelu(ly.batch_norm(conv2d(D_h2, D_w3)) + D_b3)
     out = linear(D_h3, 1)
     
-    return tf.nn.sigmoid(out), out
+    return out
 
 
 G_sample = G(z)
-D_real, D_real_logits = D(X)
-D_fake, D_fake_logits = D(G_sample)
+D_real = D(X)
+D_fake = D(G_sample)
 
 eps = tf.random_uniform([mb_size, 1], minval=0., maxval=1.)
 X_inter = eps*X + (1. - eps)*G_sample
@@ -149,8 +149,8 @@ grad_norm = tf.sqrt(tf.reduce_sum((grad)**2, axis=1))
 grad_pen = lam * tf.reduce_mean(grad_norm - 1.)**2
 
 #LSGAN
-D_loss = 0.5 * (tf.reduce_mean((D_real_logits - 1)**2) + tf.reduce_mean(D_fake_logits**2))
-G_loss = 0.5 * tf.reduce_mean((D_fake_logits - 1)**2)
+D_loss = 0.5 * (tf.reduce_mean((D_real - 1)**2) + tf.reduce_mean(D_fake**2))
+G_loss = 0.5 * tf.reduce_mean((D_fake - 1)**2)
 
 '''#WGAN
 D_loss = tf.reduce_mean(D_fake) - tf.reduce_mean(D_real) + grad_pen
