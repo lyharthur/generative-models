@@ -8,7 +8,7 @@ import os
 
 mb_size = 32
 X_dim = 784
-z_dim = 10
+z_dim = 128
 h_dim = 128
 lam = 10
 n_disc = 5
