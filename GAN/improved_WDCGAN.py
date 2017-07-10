@@ -10,8 +10,8 @@ import os
 mb_size = 32
 X_dim = 784
 z_dim = 10
-h_dim = 128
-fc_dim = 1024
+#h_dim = 128
+#fc_dim = 1024
 lam = 10
 n_disc = 5
 lr = 1e-4
@@ -33,12 +33,6 @@ def plot(samples):
         plt.imshow(sample.reshape(28, 28), cmap='Greys_r')
 
     return fig
-
-def lrelu(x, leak=0.3, name="lrelu"):
-    with tf.variable_scope(name):
-        f1 = 0.5 * (1 + leak)
-        f2 = 0.5 * (1 - leak)
-        return f1 * x + f2 * abs(x)
     
 def xavier_init(size):
     in_dim = size[0]
@@ -46,6 +40,12 @@ def xavier_init(size):
     return tf.random_normal(shape=size, stddev=xavier_stddev)
 
 ####
+def lrelu(x, leak=0.3, name="lrelu"):
+    with tf.variable_scope(name):
+        f1 = 0.5 * (1 + leak)
+        f2 = 0.5 * (1 - leak)
+        return f1 * x + f2 * abs(x)
+
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
     return tf.Variable(initial)
@@ -74,6 +74,8 @@ D_b2 = bias_variable(64)
 D_w2 = weight_variable([5, 5, 64, 128])
 D_b3 = bias_variable(128)
 
+theta_D = [D_b1, D_b2, D_b3, D_w1, D_w2, D_w3]
+
 G_w1 = weight_variable([z_dim, 4 * 4 * 64])
 G_b1 = bias_variable(4 * 4 * 64)
 
@@ -85,8 +87,7 @@ G_b3 = bias_variable(16)
 
 G_w4 = weight_variable([5, 5, 1, 16])
 G_b4 = bias_variable(1)
-        
-theta_D = [D_b1, D_b2, D_b3, D_w1, D_w2, D_w3]                    
+                    
 theta_G = [G_w1, G_b1, G_w2, G_b2, G_w3, G_b3, G_w4, G_b4 ]
 
 
@@ -134,24 +135,27 @@ def D(X):
     D_h3 = lrelu(ly.batch_norm(conv2d(D_h2, D_w3)) + D_b3)
     out = linear(D_h3, 1)
     
-    return tf.nn.sigmoid(out)
+    return tf.nn.sigmoid(out), out
 
 
 G_sample = G(z)
-D_real = D(X)
-D_fake = D(G_sample)
+D_real, D_real_logits = D(X)
+D_fake, D_fake_logits = D(G_sample)
 
 eps = tf.random_uniform([mb_size, 1], minval=0., maxval=1.)
 X_inter = eps*X + (1. - eps)*G_sample
 grad = tf.gradients(D(X_inter), [X_inter])[0]
 grad_norm = tf.sqrt(tf.reduce_sum((grad)**2, axis=1))
 grad_pen = lam * tf.reduce_mean(grad_norm - 1.)**2
-'''LSGAN
-D_loss = 0.5 * (tf.reduce_mean((D_real - 1)**2) + tf.reduce_mean(D_fake**2))
-G_loss = 0.5 * tf.reduce_mean((D_fake - 1)**2)
-'''
+
+#LSGAN
+D_loss = 0.5 * (tf.reduce_mean((D_real_logits - 1)**2) + tf.reduce_mean(D_fake_logits**2))
+G_loss = 0.5 * tf.reduce_mean((D_fake_logits - 1)**2)
+
+'''#WGAN
 D_loss = tf.reduce_mean(D_fake) - tf.reduce_mean(D_real) + grad_pen
 G_loss = -tf.reduce_mean(D_fake)
+'''
 
 D_solver = (tf.train.AdamOptimizer(learning_rate=lr, beta1=0.5)
             .minimize(D_loss, var_list=theta_D))
