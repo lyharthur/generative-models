@@ -16,7 +16,7 @@ lam = 10
 n_disc = 5
 lr = 1e-4
 
-mnist = input_data.read_data_sets('../../MNIST_data', one_hot=True)
+mnist = input_data.read_data_sets('./MNIST_data', one_hot=True)
 
 
 def plot(samples):
@@ -59,34 +59,37 @@ def conv2d(x, W):
     # Must have strides[0] = strides[3] = 1
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 def deconv2d(x, W, output_shape):
-    return tf.nn.conv2d_transpose(x, W, output_shape, strides = [1, 1, 1, 1], padding = 'SAME')
+    return tf.nn.conv2d_transpose(x, W, output_shape, strides = [1, 2, 2, 1], padding = 'SAME')
 ####
 
 X = tf.placeholder(tf.float32, shape=[None, X_dim])
 z = tf.placeholder(tf.float32, shape=[None, z_dim])
 
 D_w1 = weight_variable([5, 5, 1, 32])
-D_b1 = bias_variable(32)
+D_b1 = bias_variable([32])
 
 D_w2 = weight_variable([5, 5, 32, 64])
-D_b2 = bias_variable(64)
+D_b2 = bias_variable([64])
 
-D_w2 = weight_variable([5, 5, 64, 128])
-D_b3 = bias_variable(128)
+D_w3 = weight_variable([5, 5, 64, 128])
+D_b3 = bias_variable([128])
 
-theta_D = [D_b1, D_b2, D_b3, D_w1, D_w2, D_w3]
+D_w4 = weight_variable([28 ,28 , 128, 32])
+D_b4 = bias_variable([32])
 
-G_w1 = weight_variable([z_dim, 4 * 4 * 64])
-G_b1 = bias_variable(4 * 4 * 64)
+theta_D = [D_b1, D_b2, D_b3, D_b4, D_w1, D_w2, D_w3, D_w4]
 
-G_w2 = weight_variable([5, 5, 32, 64])
-G_b2 = bias_variable(32)
+G_w1 = weight_variable([z_dim, 7 * 7 * 64])
+G_b1 = bias_variable([7 * 7 * 64])
 
-G_w3 = weight_variable([5, 5, 16, 32])
-G_b3 = bias_variable(16)
+G_w2 = weight_variable([4, 4, 32, 64])
+G_b2 = bias_variable([32])
 
-G_w4 = weight_variable([5, 5, 1, 16])
-G_b4 = bias_variable(1)
+G_w3 = weight_variable([4, 4, 16, 32])
+G_b3 = bias_variable([16])
+
+G_w4 = weight_variable([4, 4, 1, 16])
+G_b4 = bias_variable([1])
                     
 theta_G = [G_w1, G_b1, G_w2, G_b2, G_w3, G_b3, G_w4, G_b4 ]
 
@@ -97,45 +100,50 @@ def sample_z(m, n):
 
 def G(z):
     G_h1 = tf.nn.relu(tf.matmul(z, G_w1) + G_b1)
-    G_h1_reshape = tf.reshape(G_h1, [-1, 4, 4, 64])
+    G_h1_reshape = tf.reshape(G_h1, [-1, 7, 7, 64])
     
     G_h2_output_shape = tf.stack([tf.shape(z)[0], 7, 7, 32])
-    G_h2 = tf.nn.relu(deconv2d(G_h1_reshape, G_w2, G_h2_output_shape) + G_b2))
+    G_h2 = tf.nn.relu(deconv2d(G_h1_reshape, G_w2, G_h2_output_shape) + G_b2)
     
     G_h3_output_shape = tf.stack([tf.shape(z)[0], 14, 14, 16])
-    G_h3 = tf.nn.relu(deconv2d(G_h2_reshape, G_w3, G_h3_output_shape) + G_b3))
+    G_h3 = tf.nn.relu(deconv2d(G_h2, G_w3, G_h3_output_shape) + G_b3)
     
     G_h4_output_shape = tf.stack([tf.shape(z)[0], 28, 28, 1])
-    G_h4 = tf.nn.tanh(deconv2d(G_h3_reshape, G_w4, G_h4_output_shape) + G_b4))
+    G_h4 = tf.nn.tanh(deconv2d(G_h3, G_w4, G_h4_output_shape) + G_b4)
     
     return G_h4
+    '''
+    G_h1 = tf.nn.relu(tf.nn.fully_connected(z, G_w1)+ G_b1)
+    G_h1_reshape = tf.reshape(g, (-1, 7, 7, 64))  # 7x7
+    g = tcl.conv2d_transpose(g, 32, 4, stride=2, # 14x14x64
+									activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
+    g = tcl.conv2d_transpose(g, 1, 4, stride=2, # 28x28x1
+    activation_fn=tf.nn.sigmoid, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
+    return g'''
 
-'''def generator(z):
-    #100 x 1
-    h_g1 = tf.nn.relu(tf.add(tf.matmul(z, weights["w_g1"]), biases["b_g1"]))
-    #-1 x 4*4*128
-    h_g1_reshape = tf.reshape(h_g1, [-1, 4, 4, 64])
-    
-    output_shape_g2 = tf.stack([tf.shape(z)[0], 7, 7, 32])
-    h_g2 = tf.nn.relu(tf.add(deconv2d(h_g1_reshape, weights["w_g2"], output_shape_g2), biases["b_g2"]))
-    
-    output_shape_g3 = tf.stack([tf.shape(z)[0], 14, 14, 16])
-    h_g3 = tf.nn.relu(tf.add(deconv2d(h_g2, weights["w_g3"], output_shape_g3), biases["b_g3"]))
-    
-    output_shape_g4 = tf.stack([tf.shape(z)[0], 28, 28, 1])
-    h_g4 = tf.nn.tanh(tf.add(deconv2d(h_g3, weights["w_g4"], output_shape_g4), biases["b_g4"]))
-    
-    return h_g4'''
 
 def D(X): 
     #h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+
     x_image = tf.reshape(X, [-1, 28, 28, 1])
     D_h1 = lrelu(ly.batch_norm(conv2d(x_image, D_w1)) + D_b1)
     D_h2 = lrelu(ly.batch_norm(conv2d(D_h1, D_w2)) + D_b2)
     D_h3 = lrelu(ly.batch_norm(conv2d(D_h2, D_w3)) + D_b3)
-    out = linear(D_h3, 1)
-    
+
+    out = tf.matmul(D_h3, D_w4) + D_b4
     return out
+    '''if reuse:
+        scope.reuse_variables()
+    size = 64
+    shared = tcl.conv2d(x, num_outputs=size, kernel_size=4,stride=2, activation_fn=lrelu) # bzx28x28x1 -> bzx14x14x64
+    shared = tcl.conv2d(shared, num_outputs=size * 2, kernel_size=4, stride=2, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)# 7x7x128
+    shared = tcl.flatten(shared)
+    d = tcl.fully_connected(shared, 1, activation_fn=None, weights_initializer=tf.random_normal_initializer(0, 0.02))
+    q = tcl.fully_connected(shared, 128, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)
+    q = tcl.fully_connected(q, 10, activation_fn=None) # 10 classes
+    return d, q'''
+    
+    
 
 
 G_sample = G(z)
@@ -165,8 +173,8 @@ G_solver = (tf.train.AdamOptimizer(learning_rate=lr, beta1=0.5)
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 
-if not os.path.exists('out/'):
-    os.makedirs('out/')
+if not os.path.exists('WDCGANout/'):
+    os.makedirs('WDCGANout/')
 
 i = 0
 
@@ -192,7 +200,7 @@ for it in range(1000000):
             samples = sess.run(G_sample, feed_dict={z: sample_z(16, z_dim)})
 
             fig = plot(samples)
-            plt.savefig('out/{}.png'
+            plt.savefig('WDCGANout/{}.png'
                         .format(str(i).zfill(3)), bbox_inches='tight')
             i += 1
             plt.close(fig)
